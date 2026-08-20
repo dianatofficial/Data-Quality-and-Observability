@@ -1,6 +1,6 @@
 """
 Root entrypoint for Streamlit Community Cloud and HuggingFace Spaces.
-Automatically manages Python path and launches the Data Quality Gatekeeper UI.
+Explicitly executes dashboard rendering on every session lifecycle run.
 """
 import os
 import sys
@@ -11,5 +11,16 @@ root_dir = Path(__file__).resolve().parent
 if str(root_dir) not in sys.path:
     sys.path.insert(0, str(root_dir))
 
-# Import and execute main dashboard
-from src.dashboard.app import *
+import streamlit as st
+from src.dashboard.app import render_dashboard
+
+# Streamlit Page Config
+st.set_page_config(
+    page_title="Data Quality Gatekeeper & Observability",
+    page_icon="🛡️",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+# Execute main dashboard view
+render_dashboard()
