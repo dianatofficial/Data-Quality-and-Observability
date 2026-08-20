@@ -1,15 +1,16 @@
 """
 Automated Data Quality Gatekeeper & Observability Dashboard.
-Primary entrypoint for Streamlit Community Cloud and standalone execution.
+Production-grade enterprise UI with multi-tier contract validation, quarantine remediation, and schema governance.
 """
 import json
 import os
 import sys
+import textwrap
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
-# Set up project root directory in sys.path
+# Setup project root in sys.path
 BASE_DIR = Path(__file__).resolve().parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
@@ -28,8 +29,14 @@ from src.dashboard.simulator import LiveSimulationEngine
 from src.ingestion.generator import EnterpriseDataGenerator
 
 # ==============================================================================
-# UI COMPONENTS & CHART RENDERERS (Self-contained for zero import error risk)
+# UI HELPER & COMPONENT RENDERERS
 # ==============================================================================
+
+def safe_html(html_str: str) -> None:
+    """Renders HTML safely without triggering markdown 4-space indentation code blocks."""
+    dedented = textwrap.dedent(html_str).strip()
+    st.markdown(dedented, unsafe_allow_html=True)
+
 
 def render_kpi_card(
     title: str,
@@ -48,19 +55,8 @@ def render_kpi_card(
 
     sub_html = f'<div class="obs-card-sub">{subtitle}</div>' if subtitle else ""
 
-    card_html = f"""
-    <div class="obs-card" style="border-left: 4px solid {color};">
-        <div class="obs-card-label">
-            <span>{icon}</span> {title}
-        </div>
-        <div style="display: flex; align-items: baseline; justify-content: space-between;">
-            <span class="obs-card-value">{value}</span>
-            {delta_html}
-        </div>
-        {sub_html}
-    </div>
-    """
-    st.markdown(card_html, unsafe_allow_html=True)
+    card_html = f"""<div class="obs-card" style="border-left: 4px solid {color};"><div class="obs-card-label"><span>{icon}</span> {title}</div><div style="display: flex; align-items: baseline; justify-content: space-between;"><span class="obs-card-value">{value}</span>{delta_html}</div>{sub_html}</div>"""
+    safe_html(card_html)
 
 
 def render_sla_badge(sla_passed: bool) -> str:
@@ -291,7 +287,6 @@ def render_violations_bar(violations: Dict[str, int]) -> go.Figure:
 # MAIN STREAMLIT APPLICATION
 # ==============================================================================
 
-# Streamlit Page Config
 st.set_page_config(
     page_title="Data Quality Gatekeeper & Observability",
     page_icon="🛡️",
@@ -338,17 +333,7 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("#### ⚙️ **SLA & Policy Gates**")
-    st.markdown(
-        f"""
-        <div style="background: rgba(255,255,255,0.03); border: 1px solid #243048; border-radius: 8px; padding: 12px; font-size: 0.85rem;">
-            <div>• <b>Min Health Score:</b> <span style="color:#10b981;">{settings.sla_min_health_score}%</span></div>
-            <div style="margin-top:4px;">• <b>Max Error Rate:</b> <span style="color:#f43f5e;">{settings.sla_max_error_rate * 100}%</span></div>
-            <div style="margin-top:4px;">• <b>Drift Tolerance:</b> <span style="color:#f59e0b;">{settings.drift_score_threshold}</span></div>
-            <div style="margin-top:4px;">• <b>Auto-Quarantine:</b> <span style="color:#3b82f6;">{'Active' if settings.auto_quarantine_enabled else 'Disabled'}</span></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    safe_html(f"""<div style="background: rgba(255,255,255,0.03); border: 1px solid #243048; border-radius: 8px; padding: 12px; font-size: 0.85rem;"><div>• <b>Min Health Score:</b> <span style="color:#10b981;">{settings.sla_min_health_score}%</span></div><div style="margin-top:4px;">• <b>Max Error Rate:</b> <span style="color:#f43f5e;">{settings.sla_max_error_rate * 100}%</span></div><div style="margin-top:4px;">• <b>Drift Tolerance:</b> <span style="color:#f59e0b;">{settings.drift_score_threshold}</span></div><div style="margin-top:4px;">• <b>Auto-Quarantine:</b> <span style="color:#3b82f6;">{'Active' if settings.auto_quarantine_enabled else 'Disabled'}</span></div></div>""")
 
     st.markdown("---")
     st.markdown("#### ⚡ **Quick Stream Trigger**")
@@ -362,49 +347,16 @@ with st.sidebar:
 # Main Application Header
 col_h_left, col_h_right = st.columns([3, 1])
 with col_h_left:
-    st.markdown(
-        """
-        <div style="display:flex; align-items:center; gap:12px;">
-            <h1 style="margin:0; font-size:2rem; font-weight:800; color:#f8fafc;">🛡️ Data Quality Gatekeeper</h1>
-        </div>
-        <div style="color:#94a3b8; font-size:0.9rem; margin-top:4px;">
-            Pre-Ingestion Contract Gate • Automated Quarantine • Schema Drift & SLA Observability
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    safe_html("""<div style="display:flex; align-items:center; gap:12px;"><h1 style="margin:0; font-size:2rem; font-weight:800; color:#f8fafc;">🛡️ Data Quality Gatekeeper</h1></div><div style="color:#94a3b8; font-size:0.9rem; margin-top:4px;">Pre-Ingestion Contract Gate • Automated Quarantine • Schema Drift & SLA Observability</div>""")
 
 with col_h_right:
     latest = simulator.latest_summary
     if latest:
         badge = render_sla_badge(not latest.sla_breached)
-        st.markdown(
-            f"""
-            <div style="text-align:right; padding-top:8px;">
-                <div style="font-size:0.75rem; color:#64748b; text-transform:uppercase; font-weight:700; margin-bottom:4px;">Current Pipeline SLA</div>
-                {badge}
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        safe_html(f"""<div style="text-align:right; padding-top:8px;"><div style="font-size:0.75rem; color:#64748b; text-transform:uppercase; font-weight:700; margin-bottom:4px;">Current Pipeline SLA</div>{badge}</div>""")
 
 # Pulse Status Banner
-st.markdown(
-    """
-    <div class="status-banner">
-        <div style="display:flex; align-items:center;">
-            <span class="pulse-dot"></span>
-            <span style="font-size:0.85rem; font-weight:700; color:#34d399;">GATEKEEPER ACTIVE</span>
-            <span style="margin: 0 8px; color:#475569;">|</span>
-            <span style="font-size:0.85rem; color:#cbd5e1;">Zero Data Drift Protocol Enforced • All Ingress Feeds Intercepted</span>
-        </div>
-        <div style="font-size:0.8rem; color:#94a3b8;">
-            Latency: <b style="color:#38bdf8;">~3.4ms/batch</b>
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+safe_html("""<div class="status-banner"><div style="display:flex; align-items:center;"><span class="pulse-dot"></span><span style="font-size:0.85rem; font-weight:700; color:#34d399;">GATEKEEPER ACTIVE</span><span style="margin: 0 8px; color:#475569;">|</span><span style="font-size:0.85rem; color:#cbd5e1;">Zero Data Drift Protocol Enforced • All Ingress Feeds Intercepted</span></div><div style="font-size:0.8rem; color:#94a3b8;">Latency: <b style="color:#38bdf8;">~3.4ms/batch</b></div></div>""")
 
 # Navigation Tabs
 tabs = st.tabs([
@@ -657,16 +609,7 @@ with tabs[2]:
             with col_insp_right:
                 st.markdown("##### **⚠️ Rule Violations Breakdown**")
                 for v in target_rec["violations"]:
-                    st.markdown(
-                        f"""
-                        <div style="background:rgba(244,63,94,0.08); border:1px solid #f43f5e; border-radius:6px; padding:10px; margin-bottom:8px;">
-                            <div style="font-weight:700; color:#f43f5e;">Rule: {v.get('rule_name')}</div>
-                            <div style="font-size:0.85rem; color:#cbd5e1;">Column: <code>{v.get('column')}</code> | Type: <code>{v.get('rule_type')}</code></div>
-                            <div style="font-size:0.85rem; color:#fda4af; margin-top:4px;">{v.get('message')}</div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
+                    safe_html(f"""<div style="background:rgba(244,63,94,0.08); border:1px solid #f43f5e; border-radius:6px; padding:10px; margin-bottom:8px;"><div style="font-weight:700; color:#f43f5e;">Rule: {v.get('rule_name')}</div><div style="font-size:0.85rem; color:#cbd5e1;">Column: <code>{v.get('column')}</code> | Type: <code>{v.get('rule_type')}</code></div><div style="font-size:0.85rem; color:#fda4af; margin-top:4px;">{v.get('message')}</div></div>""")
 
             if target_rec["status"] == "QUARANTINED":
                 st.markdown("##### **⚡ Remediation Actions**")

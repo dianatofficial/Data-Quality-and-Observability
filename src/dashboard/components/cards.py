@@ -1,3 +1,4 @@
+import textwrap
 import streamlit as st
 
 
@@ -18,23 +19,12 @@ def render_kpi_card(
 
     sub_html = f'<div class="obs-card-sub">{subtitle}</div>' if subtitle else ""
 
-    card_html = f"""
-    <div class="obs-card" style="border-left: 4px solid {color};">
-        <div class="obs-card-label">
-            <span>{icon}</span> {title}
-        </div>
-        <div style="display: flex; align-items: baseline; justify-content: space-between;">
-            <span class="obs-card-value">{value}</span>
-            {delta_html}
-        </div>
-        {sub_html}
-    </div>
-    """
+    card_html = f'<div class="obs-card" style="border-left: 4px solid {color};"><div class="obs-card-label"><span>{icon}</span> {title}</div><div style="display: flex; align-items: baseline; justify-content: space-between;"><span class="obs-card-value">{value}</span>{delta_html}</div>{sub_html}</div>'
     st.markdown(card_html, unsafe_allow_html=True)
 
 
 def render_sla_badge(sla_passed: bool) -> str:
-    """Renders a pulsing SLA status badge."""
+    """Renders an SLA status badge."""
     if sla_passed:
         return '<span class="badge-pass"><span style="color:#10b981; margin-right:4px;">●</span> SLA COMPLIANT</span>'
     return '<span class="badge-breach"><span style="color:#f43f5e; margin-right:4px;">●</span> SLA BREACHED</span>'
