@@ -200,14 +200,16 @@ with tabs[1]:
         if simulator.latest_summary:
             ls = simulator.latest_summary
             sum_df = pd.DataFrame([
-                {"Metric": "Batch ID", "Value": ls.batch_id},
-                {"Metric": "Dataset", "Value": ls.dataset_name},
-                {"Metric": "Total Records", "Value": ls.total_records},
+                {"Metric": "Batch ID", "Value": str(ls.batch_id)},
+                {"Metric": "Dataset", "Value": str(ls.dataset_name)},
+                {"Metric": "Total Records", "Value": str(ls.total_records)},
                 {"Metric": "Passed / Clean Records", "Value": f"{ls.passed_records} ({ls.pass_rate}%)"},
                 {"Metric": "Quarantined Records", "Value": f"{ls.quarantined_records} ({ls.error_rate * 100:.2f}%)"},
                 {"Metric": "Schema Drift Detected", "Value": "YES ⚠️" if ls.schema_drift.detected else "NO ✅"},
                 {"Metric": "SLA Status", "Value": "BREACHED ✕" if ls.sla_breached else "COMPLIANT ✓"},
             ])
+            sum_df["Metric"] = sum_df["Metric"].astype(str)
+            sum_df["Value"] = sum_df["Value"].astype(str)
             st.dataframe(sum_df, use_container_width=True, hide_index=True)
 
 # ---------------------------------------------------------
@@ -226,13 +228,17 @@ with tabs[2]:
     if q_records:
         df_q = pd.DataFrame([
             {
-                "Quarantine ID": r["quarantine_id"],
-                "Batch ID": r["batch_id"],
-                "Entity Type": r["entity_type"],
-                "Severity": r["severity"],
-                "Status": r["status"],
-                "Quarantined At": r["quarantined_at"].strftime("%Y-%m-%d %H:%M:%S") if isinstance(r["quarantined_at"], datetime) else str(r["quarantined_at"]),
-                "Violations Count": len(r["violations"]),
+                "Quarantine ID": str(r["quarantine_id"]),
+                "Batch ID": str(r["batch_id"]),
+                "Entity Type": str(r["entity_type"]),
+                "Severity": str(r["severity"]),
+                "Status": str(r["status"]),
+                "Quarantined At": (
+                    r["quarantined_at"].strftime("%Y-%m-%d %H:%M:%S")
+                    if isinstance(r["quarantined_at"], datetime)
+                    else str(r["quarantined_at"])
+                ),
+                "Violations Count": int(len(r["violations"])),
             }
             for r in q_records
         ])
@@ -351,7 +357,20 @@ with tabs[5]:
     with col_alert_feed:
         st.markdown("##### 📜 Recent Remediation Audit Trail")
         if simulator.audit_log:
-            df_audit = pd.DataFrame(simulator.audit_log)
-            st.dataframe(df_audit, use_container_width=True)
+            df_audit = pd.DataFrame([
+                {
+                    "Quarantine ID": str(a.get("quarantine_id", "")),
+                    "Action": str(a.get("action", "")),
+                    "Actor": str(a.get("actor", "")),
+                    "Notes": str(a.get("notes", "")),
+                    "Timestamp": (
+                        a.get("timestamp").strftime("%Y-%m-%d %H:%M:%S")
+                        if isinstance(a.get("timestamp"), datetime)
+                        else str(a.get("timestamp", ""))
+                    ),
+                }
+                for a in simulator.audit_log
+            ])
+            st.dataframe(df_audit, use_container_width=True, hide_index=True)
         else:
             st.info("Audit log is currently empty. Actions taken in the Quarantine tab will appear here.")
