@@ -1,0 +1,110 @@
+version: "1.0"
+suites:
+  orders:
+    dataset_name: "enterprise_orders"
+    description: "Production expectations suite for incoming raw ecommerce/billing orders"
+    critical_columns:
+      - order_id
+      - customer_id
+      - total_amount
+      - order_timestamp
+    rules:
+      - name: "order_id_not_null_and_uuid"
+        column: "order_id"
+        rule_type: "not_null"
+        severity: "CRITICAL"
+        description: "Primary key order_id must not be null"
+
+      - name: "order_id_format"
+        column: "order_id"
+        rule_type: "regex_match"
+        pattern: "^ORD-[A-Z0-9]{8,16}$"
+        severity: "HIGH"
+        description: "Order ID must match prefix ORD- followed by alphanumeric characters"
+
+      - name: "customer_id_not_null"
+        column: "customer_id"
+        rule_type: "not_null"
+        severity: "CRITICAL"
+        description: "Foreign key customer_id must not be null"
+
+      - name: "total_amount_positive"
+        column: "total_amount"
+        rule_type: "range"
+        min_val: 0.01
+        max_val: 1000000.00
+        severity: "HIGH"
+        description: "Total order amount must be strictly greater than 0 and below 1,000,000"
+
+      - name: "discount_amount_valid"
+        column: "discount_amount"
+        rule_type: "range"
+        min_val: 0.0
+        max_val: 50000.0
+        severity: "MEDIUM"
+        description: "Discount amount cannot be negative"
+
+      - name: "currency_allowed_values"
+        column: "currency"
+        rule_type: "allowed_values"
+        values: ["USD", "EUR", "GBP", "CAD", "AUD", "JPY"]
+        severity: "HIGH"
+        description: "Currency must be an approved ISO currency code"
+
+      - name: "order_status_allowed"
+        column: "status"
+        rule_type: "allowed_values"
+        values: ["PENDING", "PROCESSING", "COMPLETED", "CANCELLED", "REFUNDED"]
+        severity: "MEDIUM"
+        description: "Status must conform to the order lifecycle state machine"
+
+      - name: "order_timestamp_reasonable"
+        column: "order_timestamp"
+        rule_type: "timestamp_range"
+        min_year: 2020
+        max_future_seconds: 300
+        severity: "HIGH"
+        description: "Order timestamp cannot be from the distant past or future"
+
+    cross_column_rules:
+      - name: "discount_less_than_total"
+        rule_type: "expression"
+        expression: "discount_amount <= total_amount"
+        severity: "HIGH"
+        description: "Discount cannot exceed total order amount"
+
+  customers:
+    dataset_name: "customer_profiles"
+    description: "Quality expectations suite for upstream CRM customer profiles"
+    critical_columns:
+      - customer_id
+      - email
+      - signup_date
+    rules:
+      - name: "customer_id_not_null"
+        column: "customer_id"
+        rule_type: "not_null"
+        severity: "CRITICAL"
+        description: "Customer ID must not be null"
+
+      - name: "email_valid_format"
+        column: "email"
+        rule_type: "regex_match"
+        pattern: "^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$"
+        severity: "CRITICAL"
+        description: "Email must be a valid RFC 5322 compliant address"
+
+      - name: "country_code_valid"
+        column: "country_code"
+        rule_type: "regex_match"
+        pattern: "^[A-Z]{2}$"
+        severity: "MEDIUM"
+        description: "Country code must be ISO 3166-1 alpha-2"
+
+      - name: "age_in_range"
+        column: "age"
+        rule_type: "range"
+        min_val: 18
+        max_val: 120
+        severity: "LOW"
+        description: "Customer age must be within legal/reasonable range"
