@@ -1,19 +1,22 @@
 """
 Automated Data Quality Gatekeeper & Observability Dashboard.
-Production-grade enterprise UI with multi-tier contract validation, quarantine remediation, and schema governance.
+Primary entrypoint for Streamlit Community Cloud and standalone execution.
 """
 import json
 import os
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, List
 
-# Setup project root in sys.path
+# Set up project root directory in sys.path
 BASE_DIR = Path(__file__).resolve().parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 from config.settings import get_settings
@@ -21,19 +24,272 @@ from src.alerts.notifier import AlertDispatcher
 from src.core.engine import GatekeeperEngine
 from src.core.models import ValidationSeverity, ValidationStatus
 from src.core.reporter import DataDocsReporter
-from src.dashboard.components.cards import (
-    render_kpi_card,
-    render_severity_chip,
-    render_sla_badge,
-)
-from src.dashboard.components.charts import (
-    render_dimensions_radar,
-    render_health_gauge,
-    render_trend_chart,
-    render_violations_bar,
-)
 from src.dashboard.simulator import LiveSimulationEngine
 from src.ingestion.generator import EnterpriseDataGenerator
+
+# ==============================================================================
+# UI COMPONENTS & CHART RENDERERS (Self-contained for zero import error risk)
+# ==============================================================================
+
+def render_kpi_card(
+    title: str,
+    value: str | int | float,
+    icon: str = "📊",
+    subtitle: str | None = None,
+    delta: str | None = None,
+    color: str = "#3b82f6",
+) -> None:
+    """Renders a polished glassmorphic enterprise metric card."""
+    delta_html = ""
+    if delta:
+        is_pos = not delta.startswith("-") and not delta.startswith("✕")
+        d_color = "#10b981" if is_pos else "#f43f5e"
+        delta_html = f'<span style="color: {d_color}; font-size: 0.8rem; font-weight: 700; margin-left: 8px;">{delta}</span>'
+
+    sub_html = f'<div class="obs-card-sub">{subtitle}</div>' if subtitle else ""
+
+    card_html = f"""
+    <div class="obs-card" style="border-left: 4px solid {color};">
+        <div class="obs-card-label">
+            <span>{icon}</span> {title}
+        </div>
+        <div style="display: flex; align-items: baseline; justify-content: space-between;">
+            <span class="obs-card-value">{value}</span>
+            {delta_html}
+        </div>
+        {sub_html}
+    </div>
+    """
+    st.markdown(card_html, unsafe_allow_html=True)
+
+
+def render_sla_badge(sla_passed: bool) -> str:
+    """Renders an SLA status badge."""
+    if sla_passed:
+        return '<span class="badge-pass"><span style="color:#10b981; margin-right:4px;">●</span> SLA COMPLIANT</span>'
+    return '<span class="badge-breach"><span style="color:#f43f5e; margin-right:4px;">●</span> SLA BREACHED</span>'
+
+
+def render_health_gauge(score: float) -> go.Figure:
+    """Builds an enterprise gauge chart for the Composite Data Health Score."""
+    fig = go.Figure(
+        go.Indicator(
+            mode="gauge+number",
+            value=score,
+            domain={"x": [0, 1], "y": [0, 1]},
+            number={"suffix": "%", "font": {"size": 38, "color": "#f8fafc", "family": "Plus Jakarta Sans, sans-serif"}},
+            gauge={
+                "axis": {"range": [0, 100], "tickwidth": 1, "tickcolor": "#64748b", "tickfont": {"size": 11, "color": "#94a3b8"}},
+                "bar": {"color": "#3b82f6", "thickness": 0.28},
+                "bgcolor": "#111827",
+                "borderwidth": 1,
+                "bordercolor": "#243048",
+                "steps": [
+                    {"range": [0, 80], "color": "rgba(244, 63, 94, 0.25)"},
+                    {"range": [80, 95], "color": "rgba(245, 158, 11, 0.25)"},
+                    {"range": [95, 100], "color": "rgba(16, 185, 129, 0.25)"},
+                ],
+                "threshold": {
+                    "line": {"color": "#10b981", "width": 4},
+                    "thickness": 0.75,
+                    "value": 95,
+                },
+            },
+        )
+    )
+
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font={"color": "#94a3b8", "family": "Plus Jakarta Sans, sans-serif"},
+        margin=dict(l=15, r=15, t=25, b=15),
+        height=220,
+    )
+    return fig
+
+
+def render_dimensions_radar(dimensions: Dict[str, float]) -> go.Figure:
+    """Radar chart showing 5 dimensions: Completeness, Validity, Uniqueness, Timeliness, Consistency."""
+    categories = list(dimensions.keys())
+    values = list(dimensions.values())
+
+    categories.append(categories[0])
+    values.append(values[0])
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatterpolar(
+            r=values,
+            theta=categories,
+            fill="toself",
+            fillcolor="rgba(59, 130, 246, 0.2)",
+            line=dict(color="#3b82f6", width=2.5),
+            marker=dict(size=7, color="#60a5fa", symbol="circle"),
+            hovertemplate="<b>%{theta}</b>: %{r:.1f}%<extra></extra>",
+        )
+    )
+
+    fig.update_layout(
+        polar=dict(
+            radialaxis=dict(
+                visible=True,
+                range=[0, 100],
+                tickfont=dict(size=10, color="#64748b"),
+                gridcolor="#243048",
+                linecolor="#243048",
+            ),
+            angularaxis=dict(
+                tickfont=dict(size=12, color="#cbd5e1", family="Plus Jakarta Sans"),
+                gridcolor="#243048",
+                linecolor="#243048",
+            ),
+            bgcolor="rgba(17, 24, 39, 0.6)",
+        ),
+        paper_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=35, r=35, t=25, b=25),
+        height=260,
+        showlegend=False,
+    )
+    return fig
+
+
+def render_trend_chart(metrics: List[Dict[str, Any]]) -> go.Figure:
+    """Time-series chart showing Health Score and Quarantined Record count trend."""
+    if not metrics:
+        fig = go.Figure()
+        fig.update_layout(
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            annotations=[
+                dict(
+                    text="No batch history available",
+                    xref="paper",
+                    yref="paper",
+                    showarrow=False,
+                    font=dict(size=14, color="#64748b"),
+                )
+            ],
+        )
+        return fig
+
+    df = pd.DataFrame(metrics)
+    if "executed_at" in df.columns:
+        df["executed_at"] = pd.to_datetime(df["executed_at"])
+        df = df.sort_values("executed_at")
+
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter(
+            x=df["batch_id"].astype(str),
+            y=df["overall_health_score"],
+            name="Health Score (%)",
+            mode="lines+markers",
+            line=dict(color="#10b981", width=3, shape="spline"),
+            fill="tozeroy",
+            fillcolor="rgba(16, 185, 129, 0.08)",
+            marker=dict(size=7, color="#10b981", line=dict(width=1, color="#f8fafc")),
+            yaxis="y1",
+            hovertemplate="Batch: <b>%{x}</b><br>Health Score: <b>%{y:.2f}%</b><extra></extra>",
+        )
+    )
+
+    fig.add_trace(
+        go.Bar(
+            x=df["batch_id"].astype(str),
+            y=df["quarantined_records"],
+            name="Quarantined Records",
+            marker=dict(color="rgba(244, 63, 94, 0.75)", line=dict(width=1, color="#f43f5e")),
+            yaxis="y2",
+            hovertemplate="Batch: <b>%{x}</b><br>Quarantined: <b>%{y}</b><extra></extra>",
+        )
+    )
+
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font={"color": "#94a3b8", "family": "Plus Jakarta Sans, sans-serif"},
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1,
+            font=dict(color="#cbd5e1"),
+        ),
+        xaxis=dict(
+            gridcolor="#1e293b",
+            title="Batch Identifier",
+            tickangle=-25,
+            tickfont=dict(size=10, color="#94a3b8"),
+        ),
+        yaxis=dict(
+            title="Health Score (%)",
+            range=[0, 105],
+            gridcolor="#1e293b",
+            side="left",
+            tickfont=dict(color="#10b981"),
+        ),
+        yaxis2=dict(
+            title="Quarantined Count",
+            side="right",
+            overlaying="y",
+            showgrid=False,
+            tickfont=dict(color="#f43f5e"),
+        ),
+        margin=dict(l=35, r=35, t=30, b=40),
+        height=320,
+    )
+    return fig
+
+
+def render_violations_bar(violations: Dict[str, int]) -> go.Figure:
+    """Horizontal bar chart of top rule violation categories."""
+    if not violations:
+        fig = go.Figure()
+        fig.update_layout(
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            annotations=[
+                dict(
+                    text="Zero Violations Recorded (100% Compliant)",
+                    xref="paper",
+                    yref="paper",
+                    showarrow=False,
+                    font=dict(size=14, color="#10b981"),
+                )
+            ],
+        )
+        return fig
+
+    items = sorted(violations.items(), key=lambda x: x[1], reverse=True)
+    df = pd.DataFrame(items, columns=["Violation Type", "Count"])
+
+    fig = px.bar(
+        df,
+        x="Count",
+        y="Violation Type",
+        orientation="h",
+        color="Count",
+        color_continuous_scale="Reds",
+    )
+
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font={"color": "#94a3b8", "family": "Plus Jakarta Sans, sans-serif"},
+        coloraxis_showscale=False,
+        yaxis=dict(autorange="reversed", gridcolor="#1e293b", tickfont=dict(color="#cbd5e1")),
+        xaxis=dict(gridcolor="#1e293b", tickfont=dict(color="#94a3b8")),
+        margin=dict(l=15, r=15, t=15, b=15),
+        height=260,
+    )
+    return fig
+
+
+# ==============================================================================
+# MAIN STREAMLIT APPLICATION
+# ==============================================================================
 
 # Streamlit Page Config
 st.set_page_config(
@@ -63,9 +319,7 @@ settings = get_settings()
 simulator = get_simulator()
 engine = get_engine()
 
-# ==============================================================================
-# SIDEBAR NAVIGATION & SETTINGS
-# ==============================================================================
+# Sidebar
 with st.sidebar:
     st.image(
         "https://raw.githubusercontent.com/tandpfun/skill-icons/main/icons/Python-Dark.svg",
@@ -105,9 +359,7 @@ with st.sidebar:
             icon="🛡️",
         )
 
-# ==============================================================================
-# MAIN APPLICATION HEADER
-# ==============================================================================
+# Main Application Header
 col_h_left, col_h_right = st.columns([3, 1])
 with col_h_left:
     st.markdown(
@@ -136,7 +388,7 @@ with col_h_right:
             unsafe_allow_html=True,
         )
 
-# System Status Pulse Banner
+# Pulse Status Banner
 st.markdown(
     """
     <div class="status-banner">
@@ -172,7 +424,6 @@ with tabs[0]:
     history = simulator.batch_history
 
     if latest:
-        # Top KPI Metric Cards
         c1, c2, c3, c4, c5 = st.columns(5)
         with c1:
             render_kpi_card(
@@ -218,7 +469,6 @@ with tabs[0]:
 
         st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
 
-        # Visual Analytics Row
         col_g, col_r, col_v = st.columns([1.1, 1.4, 1.4])
         with col_g:
             st.markdown("##### 🎯 **Health Index Gauge**")
@@ -313,7 +563,6 @@ with tabs[1]:
         st.markdown("#### 📋 **Gatekeeper Evaluation Matrix**")
         latest = simulator.latest_summary
         if latest:
-            # Metric Summary Table
             sum_data = [
                 {"Metric": "Batch Identifier", "Value": str(latest.batch_id)},
                 {"Metric": "Dataset", "Value": str(latest.dataset_name)},
@@ -329,7 +578,6 @@ with tabs[1]:
             df_sum["Value"] = df_sum["Value"].astype(str)
             st.dataframe(df_sum, use_container_width=True, hide_index=True)
 
-            # Dimensional breakdown progress bars
             st.markdown("##### **Quality Dimension Scores**")
             d_col1, d_col2 = st.columns(2)
             with d_col1:
@@ -362,7 +610,6 @@ with tabs[2]:
 
     all_q_records = simulator.get_quarantine_records()
     
-    # Filter
     filtered_q = []
     for r in all_q_records:
         if q_status_filter != "All" and r["status"] != q_status_filter:
