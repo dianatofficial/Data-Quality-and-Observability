@@ -4,38 +4,49 @@ import streamlit as st
 def render_kpi_card(
     title: str,
     value: str | int | float,
+    icon: str = "📊",
+    subtitle: str | None = None,
     delta: str | None = None,
     color: str = "#3b82f6",
-    help_text: str | None = None,
 ) -> None:
-    """Renders a stylized KPI card in Streamlit."""
+    """Renders a polished glassmorphic enterprise metric card."""
     delta_html = ""
     if delta:
-        delta_color = "#10b981" if not delta.startswith("-") else "#ef4444"
-        delta_html = f'<span style="color: {delta_color}; font-size: 0.85rem; font-weight: 600; margin-left: 8px;">{delta}</span>'
+        is_pos = not delta.startswith("-") and not delta.startswith("✕")
+        d_color = "#10b981" if is_pos else "#f43f5e"
+        delta_html = f'<span style="color: {d_color}; font-size: 0.8rem; font-weight: 700; margin-left: 8px;">{delta}</span>'
+
+    sub_html = f'<div class="obs-card-sub">{subtitle}</div>' if subtitle else ""
 
     card_html = f"""
-    <div style="
-        background: #161f30;
-        border: 1px solid #2d3748;
-        border-left: 4px solid {color};
-        border-radius: 8px;
-        padding: 16px 20px;
-        margin-bottom: 12px;
-    ">
-        <div style="font-size: 0.8rem; font-weight: 600; color: #a0aec0; text-transform: uppercase; letter-spacing: 0.05em;">
-            {title}
+    <div class="obs-card" style="border-left: 4px solid {color};">
+        <div class="obs-card-label">
+            <span>{icon}</span> {title}
         </div>
-        <div style="display: flex; align-items: baseline; margin-top: 6px;">
-            <span style="font-size: 1.8rem; font-weight: 700; color: #f7fafc;">{value}</span>
+        <div style="display: flex; align-items: baseline; justify-content: space-between;">
+            <span class="obs-card-value">{value}</span>
             {delta_html}
         </div>
+        {sub_html}
     </div>
     """
     st.markdown(card_html, unsafe_allow_html=True)
 
 
 def render_sla_badge(sla_passed: bool) -> str:
+    """Renders a pulsing SLA status badge."""
     if sla_passed:
-        return '<span style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid #059669; padding: 4px 10px; border-radius: 9999px; font-weight: 700; font-size: 0.75rem;">✓ SLA COMPLIANT</span>'
-    return '<span style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid #dc2626; padding: 4px 10px; border-radius: 9999px; font-weight: 700; font-size: 0.75rem;">✕ SLA BREACHED</span>'
+        return '<span class="badge-pass"><span style="color:#10b981; margin-right:4px;">●</span> SLA COMPLIANT</span>'
+    return '<span class="badge-breach"><span style="color:#f43f5e; margin-right:4px;">●</span> SLA BREACHED</span>'
+
+
+def render_severity_chip(severity: str) -> str:
+    """Returns HTML for color-coded severity tags."""
+    sev_upper = severity.upper()
+    if sev_upper == "CRITICAL":
+        return '<span class="badge-sev-critical">CRITICAL</span>'
+    elif sev_upper == "HIGH":
+        return '<span class="badge-sev-high">HIGH</span>'
+    elif sev_upper == "MEDIUM":
+        return '<span class="badge-sev-medium">MEDIUM</span>'
+    return '<span class="badge-sev-low">LOW</span>'

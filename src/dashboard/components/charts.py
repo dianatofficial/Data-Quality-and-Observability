@@ -12,17 +12,17 @@ def render_health_gauge(score: float) -> go.Figure:
             mode="gauge+number",
             value=score,
             domain={"x": [0, 1], "y": [0, 1]},
-            number={"suffix": "%", "font": {"size": 36, "color": "#f8fafc"}},
+            number={"suffix": "%", "font": {"size": 38, "color": "#f8fafc", "family": "Plus Jakarta Sans, sans-serif"}},
             gauge={
-                "axis": {"range": [0, 100], "tickwidth": 1, "tickcolor": "#94a3b8"},
-                "bar": {"color": "#3b82f6", "thickness": 0.3},
-                "bgcolor": "#1e293b",
+                "axis": {"range": [0, 100], "tickwidth": 1, "tickcolor": "#64748b", "tickfont": {"size": 11, "color": "#94a3b8"}},
+                "bar": {"color": "#3b82f6", "thickness": 0.28},
+                "bgcolor": "#111827",
                 "borderwidth": 1,
-                "bordercolor": "#334155",
+                "bordercolor": "#243048",
                 "steps": [
-                    {"range": [0, 80], "color": "rgba(239, 68, 68, 0.2)"},
-                    {"range": [80, 95], "color": "rgba(245, 158, 11, 0.2)"},
-                    {"range": [95, 100], "color": "rgba(16, 185, 129, 0.2)"},
+                    {"range": [0, 80], "color": "rgba(244, 63, 94, 0.25)"},
+                    {"range": [80, 95], "color": "rgba(245, 158, 11, 0.25)"},
+                    {"range": [95, 100], "color": "rgba(16, 185, 129, 0.25)"},
                 ],
                 "threshold": {
                     "line": {"color": "#10b981", "width": 4},
@@ -36,8 +36,8 @@ def render_health_gauge(score: float) -> go.Figure:
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font={"color": "#94a3b8", "family": "Inter, sans-serif"},
-        margin=dict(l=20, r=20, t=30, b=20),
+        font={"color": "#94a3b8", "family": "Plus Jakarta Sans, sans-serif"},
+        margin=dict(l=15, r=15, t=25, b=15),
         height=220,
     )
     return fig
@@ -48,7 +48,6 @@ def render_dimensions_radar(dimensions: Dict[str, float]) -> go.Figure:
     categories = list(dimensions.keys())
     values = list(dimensions.values())
 
-    # Close the radar polygon
     categories.append(categories[0])
     values.append(values[0])
 
@@ -58,9 +57,10 @@ def render_dimensions_radar(dimensions: Dict[str, float]) -> go.Figure:
             r=values,
             theta=categories,
             fill="toself",
-            fillcolor="rgba(59, 130, 246, 0.25)",
-            line=dict(color="#3b82f6", width=2),
-            marker=dict(size=6, color="#60a5fa"),
+            fillcolor="rgba(59, 130, 246, 0.2)",
+            line=dict(color="#3b82f6", width=2.5),
+            marker=dict(size=7, color="#60a5fa", symbol="circle"),
+            hovertemplate="<b>%{theta}</b>: %{r:.1f}%<extra></extra>",
         )
     )
 
@@ -70,16 +70,18 @@ def render_dimensions_radar(dimensions: Dict[str, float]) -> go.Figure:
                 visible=True,
                 range=[0, 100],
                 tickfont=dict(size=10, color="#64748b"),
-                gridcolor="#334155",
+                gridcolor="#243048",
+                linecolor="#243048",
             ),
             angularaxis=dict(
-                tickfont=dict(size=12, color="#cbd5e1", family="Inter"),
-                gridcolor="#334155",
+                tickfont=dict(size=12, color="#cbd5e1", family="Plus Jakarta Sans"),
+                gridcolor="#243048",
+                linecolor="#243048",
             ),
-            bgcolor="rgba(0,0,0,0)",
+            bgcolor="rgba(17, 24, 39, 0.6)",
         ),
         paper_bgcolor="rgba(0,0,0,0)",
-        margin=dict(l=40, r=40, t=30, b=30),
+        margin=dict(l=35, r=35, t=25, b=25),
         height=260,
         showlegend=False,
     )
@@ -112,47 +114,67 @@ def render_trend_chart(metrics: List[Dict[str, Any]]) -> go.Figure:
 
     fig = go.Figure()
 
+    # Health score line + area
     fig.add_trace(
         go.Scatter(
-            x=df["batch_id"],
+            x=df["batch_id"].astype(str),
             y=df["overall_health_score"],
             name="Health Score (%)",
             mode="lines+markers",
-            line=dict(color="#10b981", width=3),
-            marker=dict(size=7),
+            line=dict(color="#10b981", width=3, shape="spline"),
+            fill="tozeroy",
+            fillcolor="rgba(16, 185, 129, 0.08)",
+            marker=dict(size=7, color="#10b981", line=dict(width=1, color="#f8fafc")),
             yaxis="y1",
+            hovertemplate="Batch: <b>%{x}</b><br>Health Score: <b>%{y:.2f}%</b><extra></extra>",
         )
     )
 
+    # Quarantined count bars
     fig.add_trace(
         go.Bar(
-            x=df["batch_id"],
+            x=df["batch_id"].astype(str),
             y=df["quarantined_records"],
             name="Quarantined Records",
-            marker_color="rgba(239, 68, 68, 0.6)",
+            marker=dict(color="rgba(244, 63, 94, 0.75)", line=dict(width=1, color="#f43f5e")),
             yaxis="y2",
+            hovertemplate="Batch: <b>%{x}</b><br>Quarantined: <b>%{y}</b><extra></extra>",
         )
     )
 
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font={"color": "#94a3b8"},
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        xaxis=dict(gridcolor="#1e293b", title="Batch Identifier"),
+        font={"color": "#94a3b8", "family": "Plus Jakarta Sans, sans-serif"},
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1,
+            font=dict(color="#cbd5e1"),
+        ),
+        xaxis=dict(
+            gridcolor="#1e293b",
+            title="Batch Identifier",
+            tickangle=-25,
+            tickfont=dict(size=10, color="#94a3b8"),
+        ),
         yaxis=dict(
             title="Health Score (%)",
             range=[0, 105],
             gridcolor="#1e293b",
             side="left",
+            tickfont=dict(color="#10b981"),
         ),
         yaxis2=dict(
             title="Quarantined Count",
             side="right",
             overlaying="y",
             showgrid=False,
+            tickfont=dict(color="#f43f5e"),
         ),
-        margin=dict(l=40, r=40, t=30, b=40),
+        margin=dict(l=35, r=35, t=30, b=40),
         height=320,
     )
     return fig
@@ -167,7 +189,7 @@ def render_violations_bar(violations: Dict[str, int]) -> go.Figure:
             plot_bgcolor="rgba(0,0,0,0)",
             annotations=[
                 dict(
-                    text="Zero Violations Recorded",
+                    text="Zero Violations Recorded (100% Compliant)",
                     xref="paper",
                     yref="paper",
                     showarrow=False,
@@ -192,11 +214,11 @@ def render_violations_bar(violations: Dict[str, int]) -> go.Figure:
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font={"color": "#94a3b8"},
+        font={"color": "#94a3b8", "family": "Plus Jakarta Sans, sans-serif"},
         coloraxis_showscale=False,
-        yaxis=dict(autorange="reversed", gridcolor="#1e293b"),
-        xaxis=dict(gridcolor="#1e293b"),
-        margin=dict(l=20, r=20, t=20, b=20),
+        yaxis=dict(autorange="reversed", gridcolor="#1e293b", tickfont=dict(color="#cbd5e1")),
+        xaxis=dict(gridcolor="#1e293b", tickfont=dict(color="#94a3b8")),
+        margin=dict(l=15, r=15, t=15, b=15),
         height=260,
     )
     return fig
