@@ -281,11 +281,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 """
 
 
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+
 class DataDocsReporter:
     """Generates standalone HTML documentation certificates for quality audit batches."""
 
     def __init__(self, output_dir: Optional[Path] = None):
-        self.output_dir = output_dir or Path("reports")
+        self.output_dir = output_dir or (BASE_DIR / "reports")
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.template = Template(HTML_TEMPLATE)
 

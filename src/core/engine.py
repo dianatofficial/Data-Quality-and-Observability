@@ -51,6 +51,9 @@ PYDANTIC_PAYLOAD_MODELS = {
 }
 
 
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+
 class GatekeeperEngine:
     """Core orchestration engine for data validation, quarantine routing, and observability."""
 
@@ -60,7 +63,7 @@ class GatekeeperEngine:
         min_sla_score: float = 95.0,
         max_error_rate: float = 0.05,
     ):
-        self.config_path = config_path or Path("config/expectations_config.yaml")
+        self.config_path = config_path or (BASE_DIR / "config" / "expectations_config.yaml")
         self.min_sla_score = min_sla_score
         self.max_error_rate = max_error_rate
         self.metrics_calculator = QualityMetricsCalculator(
