@@ -17,7 +17,6 @@ from src.core.models import (
     RecordValidationResult,
     RuleViolation,
     ValidationSeverity,
-    ValidationStatus,
 )
 from src.core.quarantine import QuarantineManager
 from src.core.reporter import DataDocsReporter

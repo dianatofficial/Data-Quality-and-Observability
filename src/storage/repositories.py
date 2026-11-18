@@ -272,7 +272,7 @@ class QuarantineRepository:
 
         query += " ORDER BY quarantined_at DESC LIMIT :limit OFFSET :offset"
         result = self.session.execute(text(query), params)
-        
+
         rows = []
         for row in result:
             d = dict(row._mapping)

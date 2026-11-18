@@ -57,7 +57,7 @@ class SchemaDriftDetector:
         for col in expected_cols.intersection(observed_cols):
             expected_type_cls = self.expected_schema[col]
             expected_type_name = expected_type_cls.__name__ if hasattr(expected_type_cls, "__name__") else str(expected_type_cls)
-            
+
             # Map Python types to simplified type names
             type_mapping = {
                 "str": "str",

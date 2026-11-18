@@ -16,7 +16,7 @@ class DatabaseManager:
     def __init__(self, database_url: str | None = None):
         settings = get_settings()
         self.database_url = database_url or settings.database_url
-        
+
         # SQLite vs PostgreSQL connection argument configuration
         connect_args = {}
         if self.database_url.startswith("sqlite"):

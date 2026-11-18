@@ -4,9 +4,8 @@ Usage:
     python scripts/run_gatekeeper.py --dataset orders --input data/sample_corrupted_batch.json
 """
 import argparse
-import json
-from pathlib import Path
 import sys
+from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 if str(BASE_DIR) not in sys.path:

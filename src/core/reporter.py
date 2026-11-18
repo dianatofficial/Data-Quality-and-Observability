@@ -1,5 +1,3 @@
-import json
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -61,7 +59,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }
         .badge-pass { background: rgba(35, 134, 54, 0.2); color: #3fb950; border: 1px solid #238636; }
         .badge-fail { background: rgba(218, 54, 51, 0.2); color: #f85149; border: 1px solid #da3633; }
-        
+
         .grid-cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

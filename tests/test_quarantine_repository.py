@@ -1,4 +1,3 @@
-from datetime import datetime
 from sqlalchemy.orm import Session
 
 from src.core.models import (
@@ -7,7 +6,7 @@ from src.core.models import (
     ValidationSeverity,
     ValidationStatus,
 )
-from src.storage.repositories import DataWarehouseRepository, QuarantineRepository
+from src.storage.repositories import QuarantineRepository
 
 
 def test_quarantine_save_and_retrieve(db_session: Session):

@@ -6,9 +6,7 @@ from src.core.models import (
     BatchSummary,
     HealthScore,
     RecordValidationResult,
-    RuleViolation,
     SchemaDriftReport,
-    ValidationSeverity,
 )
 from src.core.reporter import DataDocsReporter
 

@@ -57,6 +57,10 @@ target-version = "py311"
 select = ["E", "F", "W", "I"]
 ignore = ["E501"]
 
+[tool.ruff.lint.per-file-ignores]
+# scripts adjust sys.path before importing project modules
+"scripts/*" = ["E402"]
+
 [tool.mypy]
 python_version = "3.11"
 warn_return_any = true

@@ -3,15 +3,15 @@ Data Seeding & Sample Generation Utility.
 Generates test JSON files in the data/ folder and seeds the local SQLite/PostgreSQL database.
 """
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-from src.ingestion.generator import EnterpriseDataGenerator
 from scripts.run_gatekeeper import run_pipeline
+from src.ingestion.generator import EnterpriseDataGenerator
 
 
 def main() -> None:

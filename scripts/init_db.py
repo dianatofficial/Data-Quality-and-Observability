@@ -2,8 +2,8 @@
 Database schema bootstrap script.
 Initializes all necessary clean tables, quarantine tables, and metrics logs.
 """
-from pathlib import Path
 import sys
+from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 if str(BASE_DIR) not in sys.path:
